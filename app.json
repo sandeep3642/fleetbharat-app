@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "AppFleetBharat",
+    "slug": "AppFleetBharat",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A73E8"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.appfleetbharat.app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyDL9J82iDhcUWdQiuIvBYa0t5asrtz3Swk"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#1A73E8"
+      },
+      "package": "com.appfleetbharat.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDL9J82iDhcUWdQiuIvBYa0t5asrtz3Swk"
+        }
+      }
+    }
+  }
+}
