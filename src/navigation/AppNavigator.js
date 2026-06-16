@@ -22,7 +22,7 @@ function TabIcon({ icon, focused }) {
 }
 
 function MainTabs() {
-  
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -35,6 +35,7 @@ function MainTabs() {
           paddingBottom: 8,
           paddingTop: 6,
         },
+        sceneContainerStyle: { backgroundColor: '#f9fafb' },
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.gray,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },

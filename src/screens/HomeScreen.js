@@ -1,4 +1,4 @@
-import React from 'react';
+import React ,{useEffect} from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, SafeAreaView, StatusBar,
@@ -26,9 +26,6 @@ export default function HomeScreen({ navigation }) {
       try {
         const keys = await AsyncStorage.getAllKeys();
         const data = await AsyncStorage.multiGet(keys);
-
-        console.log('Keys:', keys);
-        console.log('Data:', data);
       } catch (error) {
         console.log('Storage Error:', error);
       }

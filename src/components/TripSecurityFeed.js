@@ -8,7 +8,7 @@ const SEVERITY_COLORS = {
     LOW: '#9CA3AF',
 };
 
-export default function TripSecurityFeed({ items, isDark, title }) {
+export default function TripSecurityFeed({ items = [], isDark, title, emptyText = 'No alerts.' }) {
     return (
         <View style={[styles.card, isDark && styles.cardDark]}>
             <View style={styles.headerRow}>
@@ -35,7 +35,7 @@ export default function TripSecurityFeed({ items, isDark, title }) {
                     );
                 })
             ) : (
-                <Text style={[styles.empty, isDark && styles.textGray]}>No alerts.</Text>
+                <Text style={[styles.empty, isDark && styles.textGray]}>{emptyText}</Text>
             )}
         </View>
     );
