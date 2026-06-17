@@ -2,29 +2,73 @@ import React, { useState } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity,
     StyleSheet, SafeAreaView, StatusBar, KeyboardAvoidingView,
-    Platform, ScrollView, ActivityIndicator, Alert
+    Platform, ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors } from '../constants/colors';
 import { loginUser } from '../services/authService';
 
+const COLORS = {
+    primary: '#1F2937',
+    secondary: '#10B981',
+    accent: '#059669',
+    background: '#f9fafb',
+    surface: '#FFFFFF',
+    text: '#111827',
+    textMuted: '#6B7280',
+    border: '#E5E7EB',
+    error: '#EF4444',
+    success: '#10B981',
+};
+
 export default function LoginScreen({ navigation }) {
-    const [email, setEmail] = useState('');
+    const [credential, setCredential] = useState('');
     const [password, setPassword] = useState('');
-    const [remember, setRemember] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
+    const [remember, setRemember] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const [credentialType, setCredentialType] = useState(''); // 'email', 'phone', 'username'
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Detect credential type
+    const detectCredentialType = (value) => {
+        if (!value.trim()) return '';
+        
+        // Check if email
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            return 'email';
+        }
+        
+        // Check if phone (10 digits)
+        if (/^[0-9]{10}$/.test(value)) {
+            return 'phone';
+        }
+        
+        // Otherwise username
+        if (value.length >= 3 && /^[a-zA-Z0-9_.-]+$/.test(value)) {
+            return 'username';
+        }
+        
+        return '';
+    };
 
     const validateForm = () => {
         const newErrors = {};
-        if (!email.trim()) {
-            newErrors.email = 'Email or phone is required';
+        
+        if (!credential.trim()) {
+            newErrors.credential = 'Email, phone, or username required';
+        } else {
+            const type = detectCredentialType(credential);
+            if (!type) {
+                newErrors.credential = 'Enter valid email, 10-digit phone, or username';
+            }
         }
+        
         if (!password) {
-            newErrors.password = 'Password is required';
+            newErrors.password = 'Password required';
+        } else if (password.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters';
         }
+        
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -34,15 +78,14 @@ export default function LoginScreen({ navigation }) {
 
         try {
             setLoading(true);
-
-            const response = await loginUser(email, password);
+            const type = detectCredentialType(credential);
+            
+            // Call login with credential (backend handles any format)
+            const response = await loginUser(credential, password);
             const token = response?.data?.token;
 
             if (!token?.accessToken) {
-                Alert.alert(
-                    'Login Failed',
-                    response?.message || 'Invalid email or password.'
-                );
+                Alert.alert('Login Failed', response?.message || 'Invalid credentials.');
                 return;
             }
 
@@ -54,136 +97,202 @@ export default function LoginScreen({ navigation }) {
                 await AsyncStorage.setItem('permissions', JSON.stringify(response.data.formRights));
             }
 
-            // Remember email for next time
+            // Remember credential if checked
             if (remember) {
-                await AsyncStorage.setItem('rememberedEmail', email);
+                await AsyncStorage.setItem('rememberedCredential', credential);
+                await AsyncStorage.setItem('credentialType', type);
             } else {
-                await AsyncStorage.removeItem('rememberedEmail');
+                await AsyncStorage.removeItem('rememberedCredential');
+                await AsyncStorage.removeItem('credentialType');
             }
 
-            // Navigate to main app
             navigation.replace('Main');
         } catch (err) {
             console.error('Login error:', err);
-            Alert.alert('Error', 'Network error. Please check your connection and try again.');
+            Alert.alert('Error', err?.message || 'Network error. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
+    const handleCredentialChange = (value) => {
+        setCredential(value);
+        const type = detectCredentialType(value);
+        setCredentialType(type);
+        
+        if (errors.credential) {
+            setErrors(e => ({ ...e, credential: undefined }));
+        }
+    };
+
+    const getCredentialLabel = () => {
+        if (!credentialType) return 'Email, Phone, or Username';
+        if (credentialType === 'email') return '📧 Email';
+        if (credentialType === 'phone') return '📱 Phone';
+        return '👤 Username';
+    };
+
     return (
         <SafeAreaView style={styles.safe}>
-            <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+            <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-            {/* Green Header */}
-            <View style={styles.header}>
-                <View style={styles.headerTop}>
-                    <View style={styles.badge}><Text style={styles.badgeText}>V2.0 INDIA</Text></View>
-                    <View style={styles.liveBadge}>
-                        <View style={styles.liveDot} />
-                        <Text style={styles.liveText}>LIVE</Text>
-                    </View>
-                </View>
-
-                <View style={styles.logoBox}>
-                    <Text style={styles.logoIcon}>🚛</Text>
-                </View>
-                <Text style={styles.appName}>FleetBharat</Text>
-                <Text style={styles.tagline}>Powering India's fleet revolution</Text>
-            </View>
-
-            {/* White Card */}
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-                <ScrollView contentContainerStyle={styles.card} keyboardShouldPersistTaps="handled">
-                    <Text style={styles.welcome}>Welcome back</Text>
-                    <Text style={styles.subtitle}>Sign in to manage your fleet</Text>
-
-                    {/* Email */}
-                    <Text style={styles.label}>Email, Mobile, or Username</Text>
-                    <View style={[styles.inputRow, errors.email && styles.inputError]}>
-                        <Text style={styles.inputIcon}>✉️</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="name@company.com"
-                            placeholderTextColor="#aaa"
-                            value={email}
-                            onChangeText={(v) => { setEmail(v); setErrors(e => ({ ...e, email: undefined })); }}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            editable={!loading}
-                        />
-                    </View>
-                    {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-
-                    {/* Password */}
-                    <View style={styles.labelRow}>
-                        <Text style={styles.label}>Password</Text>
-                        <TouchableOpacity>
-                            <Text style={styles.forgot}>FORGOT PASSWORD?</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <View style={[styles.inputRow, errors.password && styles.inputError]}>
-                        <Text style={styles.inputIcon}>🔒</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="••••••••"
-                            placeholderTextColor="#aaa"
-                            value={password}
-                            onChangeText={(v) => { setPassword(v); setErrors(e => ({ ...e, password: undefined })); }}
-                            secureTextEntry
-                            editable={!loading}
-                            onSubmitEditing={handleLogin}
-                        />
-                    </View>
-                    {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-
-                    {/* Remember me */}
-                    <TouchableOpacity style={styles.rememberRow} onPress={() => setRemember(!remember)}>
-                        <View style={[styles.checkbox, remember && styles.checkboxOn]}>
-                            {remember && <Text style={styles.checkmark}>✓</Text>}
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <ScrollView 
+                    contentContainerStyle={{ flexGrow: 1 }} 
+                    keyboardShouldPersistTaps="handled" 
+                    showsVerticalScrollIndicator={false}
+                >
+                    
+                    {/* Header Section */}
+                    <View style={styles.header}>
+                        <View style={styles.logoContainer}>
+                            <View style={styles.logoBg}>
+                                <Text style={styles.logoText}>🚛</Text>
+                            </View>
                         </View>
-                        <Text style={styles.rememberText}>Remember for 30 days</Text>
-                    </TouchableOpacity>
-
-                    {/* Sign In Button */}
-                    <TouchableOpacity
-                        style={[styles.signInBtn, loading && styles.signInBtnDisabled]}
-                        onPress={handleLogin}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.signInText}>Sign In</Text>
-                        )}
-                    </TouchableOpacity>
-
-                    {/* Divider */}
-                    <View style={styles.dividerRow}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
-                        <View style={styles.dividerLine} />
+                        <Text style={styles.brandName}>FleetBharat</Text>
+                        <Text style={styles.brandTagline}>Smart Fleet Management</Text>
                     </View>
 
-                    {/* Social Buttons */}
-                    <View style={styles.socialRow}>
-                        <TouchableOpacity style={styles.socialBtn}>
-                            <Text style={styles.socialIcon}>G</Text>
-                            <Text style={styles.socialText}>Google</Text>
+                    {/* Form Section */}
+                    <View style={styles.formContainer}>
+                        
+                        {/* Title */}
+                        <Text style={styles.formTitle}>Welcome Back</Text>
+                        <Text style={styles.formSubtitle}>Sign in to your account</Text>
+
+                        {/* Credential Input (Email/Phone/Username) */}
+                        <View style={styles.inputGroup}>
+                            <View style={styles.labelRow}>
+                                <Text style={styles.inputLabel}>Email, Mobile, or Username</Text>
+                                {credentialType && (
+                                    <Text style={styles.credentialTypeHint}>{getCredentialLabel()}</Text>
+                                )}
+                            </View>
+                            <View style={[
+                                styles.inputBox,
+                                errors.credential && styles.inputBoxError,
+                                credential && !errors.credential && credentialType && styles.inputBoxSuccess,
+                            ]}>
+                                <TextInput
+                                    style={styles.inputField}
+                                    placeholderTextColor={COLORS.textMuted}
+                                    value={credential}
+                                    onChangeText={handleCredentialChange}
+                                    autoCapitalize="none"
+                                    autoComplete="off"
+                                    editable={!loading}
+                                />
+                                {credential && !errors.credential && credentialType && (
+                                    <Text style={styles.inputIcon}>✓</Text>
+                                )}
+                            </View>
+                            {errors.credential && (
+                                <Text style={styles.errorMsg}>{errors.credential}</Text>
+                            )}
+                            
+                            {/* Hint Text */}
+                            {!credentialType && credential && (
+                                <Text style={styles.hintText}>
+                                    💡 Use email (user@example.com), phone (10 digits), or username
+                                </Text>
+                            )}
+                        </View>
+
+                        {/* Password Input */}
+                        <View style={styles.inputGroup}>
+                            <View style={styles.labelRow}>
+                                <Text style={styles.inputLabel}>Password</Text>
+                                <TouchableOpacity activeOpacity={0.6}>
+                                    <Text style={styles.forgotBtn}>Forgot?</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[
+                                styles.inputBox,
+                                errors.password && styles.inputBoxError,
+                                password && !errors.password && styles.inputBoxSuccess,
+                            ]}>
+                                <TextInput
+                                    style={styles.inputField}
+                                    placeholderTextColor={COLORS.textMuted}
+                                    value={password}
+                                    onChangeText={(v) => {
+                                        setPassword(v);
+                                        if (errors.password) setErrors(e => ({ ...e, password: undefined }));
+                                    }}
+                                    secureTextEntry={!showPassword}
+                                    editable={!loading}
+                                    onSubmitEditing={handleLogin}
+                                />
+                                <TouchableOpacity
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                                >
+                                    <Text style={styles.eyeIcon}>
+                                        {showPassword ? '👁' : '👁‍🗨'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            {errors.password && (
+                                <Text style={styles.errorMsg}>{errors.password}</Text>
+                            )}
+                        </View>
+
+                        {/* Remember Me */}
+                        <TouchableOpacity
+                            style={styles.rememberBox}
+                            onPress={() => setRemember(!remember)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[styles.checkbox, remember && styles.checkboxActive]}>
+                                {remember && <Text style={styles.checkmark}>✓</Text>}
+                            </View>
+                            <Text style={styles.rememberText}>Remember me for 30 days</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.socialBtn}>
-                            <Text style={[styles.socialIcon, { color: '#1877F2' }]}>f</Text>
-                            <Text style={styles.socialText}>Facebook</Text>
+
+                        {/* Sign In Button */}
+                        <TouchableOpacity
+                            style={[styles.signInBtn, loading && styles.signInBtnLoading]}
+                            onPress={handleLogin}
+                            disabled={loading}
+                            activeOpacity={0.85}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color={COLORS.surface} size="small" />
+                            ) : (
+                                <Text style={styles.signInText}>Sign In</Text>
+                            )}
                         </TouchableOpacity>
+
+                        {/* OR Divider */}
+                        {/* <View style={styles.dividerContainer}>
+                            <View style={styles.divider} />
+                            <Text style={styles.dividerText}>OR</Text>
+                            <View style={styles.divider} />
+                        </View> */}
+
+                        {/* Social Buttons */}
+                        {/* <View style={styles.socialContainer}>
+                            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
+                                <Text style={styles.socialBtnText}>Google</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.socialBtn} activeOpacity={0.7}>
+                                <Text style={styles.socialBtnText}>Apple</Text>
+                            </TouchableOpacity>
+                        </View> */}
+
+                        {/* Sign Up Link */}
+                        <View style={styles.signupContainer}>
+                            <Text style={styles.signupText}>Don't have an account? </Text>
+                            <TouchableOpacity activeOpacity={0.6}>
+                                <Text style={styles.signupLink}>Sign up free</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Footer */}
+                        <Text style={styles.versionText}>v2.0 • India</Text>
                     </View>
 
-                    {/* Sign Up */}
-                    <View style={styles.signupRow}>
-                        <Text style={styles.signupText}>Don't have an account? </Text>
-                        <TouchableOpacity>
-                            <Text style={styles.signupLink}>Sign up for free</Text>
-                        </TouchableOpacity>
-                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -191,53 +300,269 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    safe: { flex: 1, backgroundColor: Colors.primary },
+    safe: {
+        flex: 1,
+        backgroundColor: COLORS.background,
+    },
 
-    header: { backgroundColor: Colors.primary, alignItems: 'center', paddingBottom: 30, paddingTop: 10 },
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 20, marginBottom: 20 },
-    badge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-    badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-    liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-    liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#4ade80', marginRight: 5 },
-    liveText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-    logoBox: { width: 70, height: 70, backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-    logoIcon: { fontSize: 36 },
-    appName: { color: '#fff', fontSize: 26, fontWeight: '800', letterSpacing: 0.5 },
-    tagline: { color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 4 },
+    /* Header */
+    header: {
+        paddingVertical: 48,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    logoContainer: {
+        marginBottom: 24,
+    },
+    logoBg: {
+        width: 72,
+        height: 72,
+        borderRadius: 18,
+        backgroundColor: COLORS.secondary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: COLORS.secondary,
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 6,
+    },
+    logoText: {
+        fontSize: 36,
+    },
+    brandName: {
+        fontSize: 32,
+        fontWeight: '800',
+        color: COLORS.text,
+        marginBottom: 8,
+        letterSpacing: -0.5,
+    },
+    brandTagline: {
+        fontSize: 14,
+        color: COLORS.textMuted,
+        fontWeight: '500',
+    },
 
-    card: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingTop: 32, flexGrow: 1 },
-    welcome: { fontSize: 24, fontWeight: '800', color: '#111', marginBottom: 4 },
-    subtitle: { fontSize: 14, color: '#666', marginBottom: 24 },
+    /* Form Container */
+    formContainer: {
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingBottom: 32,
+        justifyContent: 'center',
+    },
+    formTitle: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: COLORS.text,
+        marginBottom: 8,
+    },
+    formSubtitle: {
+        fontSize: 14,
+        color: COLORS.textMuted,
+        fontWeight: '500',
+        marginBottom: 32,
+    },
 
-    label: { fontSize: 11, fontWeight: '700', color: '#999', letterSpacing: 1, marginBottom: 8 },
-    labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    forgot: { fontSize: 11, fontWeight: '700', color: Colors.primary, letterSpacing: 0.5 },
-    inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 12, paddingHorizontal: 14, marginBottom: 6, height: 52 },
-    inputError: { borderWidth: 1.5, borderColor: '#EF4444' },
-    inputIcon: { fontSize: 16, marginRight: 10 },
-    input: { flex: 1, fontSize: 15, color: '#333' },
-    errorText: { color: '#EF4444', fontSize: 11, marginBottom: 12, fontWeight: '600' },
+    /* Input Group */
+    inputGroup: {
+        marginBottom: 24,
+    },
+    labelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.text,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    credentialTypeHint: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.secondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+    },
+    forgotBtn: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.secondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+    },
+    inputBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.surface,
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        height: 56,
+    },
+    inputBoxError: {
+        borderColor: COLORS.error,
+        backgroundColor: 'rgba(239, 68, 68, 0.03)',
+    },
+    inputBoxSuccess: {
+        borderColor: COLORS.success,
+    },
+    inputField: {
+        flex: 1,
+        fontSize: 15,
+        color: COLORS.text,
+        fontWeight: '500',
+        paddingVertical: 0,
+    },
+    inputIcon: {
+        fontSize: 16,
+        color: COLORS.success,
+        marginLeft: 8,
+    },
+    eyeIcon: {
+        fontSize: 18,
+        marginLeft: 8,
+    },
+    errorMsg: {
+        fontSize: 12,
+        color: COLORS.error,
+        fontWeight: '600',
+        marginTop: 8,
+    },
+    hintText: {
+        fontSize: 11,
+        color: COLORS.textMuted,
+        fontStyle: 'italic',
+        marginTop: 8,
+    },
 
-    rememberRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, marginBottom: 24 },
-    checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#ddd', marginRight: 10, alignItems: 'center', justifyContent: 'center' },
-    checkboxOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-    checkmark: { color: '#fff', fontSize: 13, fontWeight: '800' },
-    rememberText: { fontSize: 14, color: '#444' },
+    /* Remember Me */
+    rememberBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 28,
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        borderWidth: 1.5,
+        borderColor: COLORS.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 12,
+        backgroundColor: COLORS.surface,
+    },
+    checkboxActive: {
+        borderColor: COLORS.secondary,
+        backgroundColor: COLORS.secondary,
+    },
+    checkmark: {
+        color: COLORS.surface,
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    rememberText: {
+        fontSize: 13,
+        color: COLORS.textMuted,
+        fontWeight: '500',
+    },
 
-    signInBtn: { backgroundColor: '#111', borderRadius: 14, height: 54, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-    signInBtnDisabled: { opacity: 0.6 },
-    signInText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+    /* Sign In Button */
+    signInBtn: {
+        height: 56,
+        borderRadius: 12,
+        backgroundColor: COLORS.secondary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 28,
+        shadowColor: COLORS.secondary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 4,
+    },
+    signInBtnLoading: {
+        opacity: 0.9,
+    },
+    signInText: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: COLORS.surface,
+        letterSpacing: 0.3,
+    },
 
-    dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-    dividerLine: { flex: 1, height: 1, backgroundColor: '#eee' },
-    dividerText: { fontSize: 11, color: '#aaa', marginHorizontal: 12, fontWeight: '600' },
+    /* Divider */
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    divider: {
+        flex: 1,
+        height: 1,
+        backgroundColor: COLORS.border,
+    },
+    dividerText: {
+        fontSize: 12,
+        color: COLORS.textMuted,
+        fontWeight: '700',
+        marginHorizontal: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
 
-    socialRow: { flexDirection: 'row', gap: 12, marginBottom: 28 },
-    socialBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#e5e5e5', borderRadius: 12, height: 50, gap: 8 },
-    socialIcon: { fontSize: 18, fontWeight: '800', color: '#DB4437' },
-    socialText: { fontSize: 15, fontWeight: '600', color: '#333' },
+    /* Social Buttons */
+    socialContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 28,
+    },
+    socialBtn: {
+        flex: 1,
+        height: 50,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLORS.surface,
+    },
+    socialBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.text,
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+    },
 
-    signupRow: { flexDirection: 'row', justifyContent: 'center' },
-    signupText: { fontSize: 14, color: '#666' },
-    signupLink: { fontSize: 14, color: Colors.primary, fontWeight: '700' },
+    /* Sign Up */
+    signupContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    signupText: {
+        fontSize: 13,
+        color: COLORS.textMuted,
+    },
+    signupLink: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: COLORS.secondary,
+    },
+
+    /* Footer */
+    versionText: {
+        fontSize: 11,
+        color: COLORS.textMuted,
+        textAlign: 'center',
+        fontWeight: '500',
+    },
 });

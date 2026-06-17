@@ -5,7 +5,6 @@ export const loginUser = async (identifier, password) => {
         email: String(identifier || '').trim(),
         password,
     };
-
     try {
         const res = await api.post('/api/auth/login', payload);
         return res.data;

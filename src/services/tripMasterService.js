@@ -1,3 +1,4 @@
+import { flattenAccountHierarchyOptions } from '../utils/accountUtils';
 import { tmsApi } from './apiService';
 import api from './apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -220,16 +221,13 @@ export const getAccountHierarchy = async () => {
                 ? res.data.data
                 : [];
 
-        // Flatten/normalize the account options
-        const accounts = raw.map((item) => ({
-            id: item.id || item.accountId,
-            value: item.name || item.accountName || item.value,
-            name: item.name || item.accountName,
-        }));
+        // Use the flattened version for dropdown options
+        const flattened = flattenAccountHierarchyOptions(raw);
+
         return {
             success: true,
             statusCode: 200,
-            data: accounts,
+            data: flattened,  // Already formatted with id & value
             rawHierarchy: raw,
         };
     } catch (error) {

@@ -3,7 +3,8 @@ import {
     View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
     Alert, Modal, ScrollView,
 } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+// import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker, Polyline, Circle, Polygon } from 'react-native-maps';
 import {
     getTripMonitorDetail,
     sendLockUnlockCommand,
@@ -13,7 +14,8 @@ import {
 } from '../services/tripMasterService';
 import { getLiveTrackingData } from '../services/liveTrackingService';
 import { decodePolylineToPath } from '../utils/polyline';
-import { buildTripRouteCentersPath } from '../utils/tripRouteMap';
+// import { buildTripRouteCentersPath } from '../utils/tripRouteMap';
+import { buildTripRouteCentersPath, buildTripRouteOverlays } from '../utils/tripRouteMapNative';
 import RouteTimeline from './RouteTimeline';
 import ManualStatusModal from './ManualStatusModal';
 import TripAdditionalDetailsModal from './TripAdditionalDetailsModal';
@@ -279,7 +281,36 @@ export default function TripMonitorRow({ trip, isDark, accentColor, progressLabe
         ...(hasCurrent ? [{ latitude: trip.currentLat, longitude: trip.currentLng }] : []),
         ...(hasDest ? [{ latitude: trip.destinationLat, longitude: trip.destinationLng }] : []),
     ];
+    const renderRouteOverlays = (routePoints) => {
+        if (!routePoints || routePoints.length === 0) return [];
 
+        const overlays = buildTripRouteOverlays(routePoints);
+        return overlays.map((overlay) => {
+            if (overlay.geometry === 'circle') {
+                return (
+                    <Circle
+                        key={overlay.key}
+                        center={overlay.center}
+                        radius={overlay.radiusM}
+                        strokeColor="#2563eb"
+                        strokeWidth={2}
+                        fillColor="rgba(96, 165, 250, 0.18)"
+                    />
+                );
+            } else if (overlay.geometry === 'polygon') {
+                return (
+                    <Polygon
+                        key={overlay.key}
+                        coordinates={overlay.paths}
+                        strokeColor="#2563eb"
+                        strokeWidth={2}
+                        fillColor="rgba(96, 165, 250, 0.18)"
+                    />
+                );
+            }
+            return null;
+        });
+    };
     const renderMap = (height) => (
         <View style={[styles.mapContainer, { height }]}>
             {hasMapData ? (
@@ -304,6 +335,9 @@ export default function TripMonitorRow({ trip, isDark, accentColor, progressLabe
                     {historyPath.length > 1 && (
                         <Polyline coordinates={historyPath} strokeColor="#10B981" strokeWidth={5} />
                     )}
+
+                    {detailTrip?.routePoints && renderRouteOverlays(detailTrip.routePoints)}
+
 
                     {hasOrigin && (
                         <Marker
