@@ -6,7 +6,7 @@ import {
 import { Colors } from '../constants/colors';
 
 const menuItems = [
-  { icon: '🏢', label: 'Company Details', sub: 'AppFleetBharat Pvt. Ltd.' },
+  { icon: '🏢', label: 'Company Details', sub: 'Fleet Bharat Pvt. Ltd.' },
   { icon: '👥', label: 'Manage Drivers', sub: '18 drivers registered' },
   { icon: '📊', label: 'Reports & Analytics', sub: 'View performance reports' },
   { icon: '🔔', label: 'Notifications', sub: 'Manage alerts & reminders' },
@@ -29,8 +29,8 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>AF</Text>
           </View>
-          <Text style={styles.name}>AppFleetBharat Admin</Text>
-          <Text style={styles.email}>admin@appfleetbharat.in</Text>
+          <Text style={styles.name}>Fleet-Bharat Admin</Text>
+          <Text style={styles.email}>admin@fleetbharat.in</Text>
           <Text style={styles.role}>Fleet Manager • India</Text>
 
           <View style={styles.statsRow}>
@@ -72,7 +72,7 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>🚪 Logout</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>AppFleetBharat v1.0.0</Text>
+        <Text style={styles.version}>Fleet-Bharat v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );

@@ -39,7 +39,7 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Good Morning 👋</Text>
-          <Text style={styles.headerTitle}>AppFleetBharat</Text>
+          <Text style={styles.headerTitle}>Fleet-Bharat</Text>
         </View>
         <TouchableOpacity style={styles.notifBtn}>
           <Text style={styles.notifIcon}>🔔</Text>

@@ -29,6 +29,9 @@
           "apiKey": "AIzaSyDL9J82iDhcUWdQiuIvBYa0t5asrtz3Swk"
         }
       }
-    }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

@@ -8,9 +8,13 @@ import HomeScreen from '../screens/HomeScreen';
 import FleetScreen from '../screens/FleetScreen';
 import TripsScreen from '../screens/TripsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import LoginScreen from '../screens/LoginScreen'; // ✅ ADD THIS
+import LoginScreen from '../screens/LoginScreen';
 import { Colors } from '../constants/colors';
 import TripDashboardScreen from '../screens/TripDashboardScreen';
+import RunReportScreen from '../screens/RunReportScreen';
+import MovementReportScreen from '../screens/Movementreportscreen';
+import ReportsMenuScreen from '../screens/Reportsmenuscreen';
+import TripReportScreen from '../screens/Tripreportscreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -56,6 +60,12 @@ function MainTabs() {
         component={TripDashboardScreen}
         options={{ tabBarIcon: ({ focused }) => <TabIcon icon="📍" focused={focused} /> }}
       />
+      {/* ✅ ADD THIS TAB */}
+      <Tab.Screen
+        name="Reports"
+        component={ReportsMenuScreen}
+        options={{ tabBarIcon: ({ focused }) => <TabIcon icon="📊" focused={focused} /> }}
+      />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -72,6 +82,21 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen
+          name="RunReport"
+          component={RunReportScreen}
+          options={{ headerShown: true, title: 'Run Report' }}
+        />
+        <Stack.Screen
+          name="MovementReport"
+          component={MovementReportScreen}
+          options={{ headerShown: true, title: 'Movement Report' }}
+        />
+          <Stack.Screen
+          name="TripReport"
+          component={TripReportScreen}
+          options={{ headerShown: true, title: 'Trip Report' }}
+        />
         {/* <Stack.Screen name="TripDashboard" component={TripDashboardScreen} /> */}
       </Stack.Navigator>
     </NavigationContainer>

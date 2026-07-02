@@ -235,3 +235,44 @@ export const getAccountHierarchy = async () => {
         return buildErrorResponse(error, 'Failed to fetch accounts');
     }
 };
+
+// ✅ ADDED: Trip report
+export const getTripReport = async (params = {}) => {
+    try {
+        const res = await tmsApi.get('/api/trip-report', { params });
+        return res?.data || {};
+    } catch (error) {
+        return buildErrorResponse(error, 'Failed to fetch trip report');
+    }
+};
+
+// ✅ ADDED: Vehicle dropdown, scoped to a specific accountId.
+// If no accountId is passed, falls back to the logged-in user's stored account.
+export const getVehicleDropdown = async (accountId) => {
+    try {
+        const resolvedAccountId = accountId
+            ? Number(accountId)
+            : await getStoredAccountId();
+
+        const endpoint = resolvedAccountId
+            ? `/api/common/dropdowns/vehicles/${resolvedAccountId}`
+            : `/api/common/dropdowns/vehicles`;
+
+        const res = await api.get(endpoint);
+        const payload = res?.data || {};
+        const list = Array.isArray(payload)
+            ? payload
+            : Array.isArray(payload?.data)
+                ? payload.data
+                : [];
+
+        return {
+            success: true,
+            statusCode: 200,
+            data: list,
+        };
+    } catch (error) {
+        console.error('API Error in getVehicleDropdown:', error);
+        return buildErrorResponse(error, 'Failed to fetch vehicles');
+    }
+};
